@@ -12,11 +12,18 @@ interface MyDB extends DBSchema {
     };
     sesion: {
         value: {
-            name: string;
-            mail: string;
+            user_phone: string;
+            session_id: string;
         };
         key: string;
     };
+    info: {
+        value: {
+            name: string;
+            user_phone: string;
+        };
+        key: string;
+    }
 }
 
 class LocalDB {
@@ -52,7 +59,27 @@ class LocalDB {
     async setSesion(sesion: MyDB['sesion']['value']) {
         if (this.db == null) return
         const db = await this.db
-        db.put('sesion', sesion, 'sesion')
+        try {
+            await db.add('sesion', sesion, 'sesion')
+        } catch {}
+    }
+
+    async getInfo() {
+        if (this.db == null) return
+        const db = await this.db
+        return db.get('info', 'info')
+    }
+
+    async setInfo(info: MyDB['info']['value']) {
+        if (this.db == null) return
+        const db = await this.db
+        try {
+            await db.add('info', info, 'info')
+        } catch {}    
+    }
+
+    isBrowser() {
+        return this.db != null
     }
 }
 
@@ -72,6 +99,7 @@ export function useLocalBD() {
                 })
 
                 db.createObjectStore('sesion')
+                db.createObjectStore('info')
             }
         })
         ),

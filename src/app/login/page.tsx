@@ -3,44 +3,39 @@ import { cookies } from 'next/headers'
 import SubmitButton from './SubmitButton'
 import { createServerClient, CookieOptions } from '@supabase/ssr'
 import { redirect } from 'next/navigation'
+import { randomUUID } from 'crypto'
 
 
 export default async function Login() {
     'use server'
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return cookies().get(name)?.value
-                },
-                set(name: string, value: string, options: CookieOptions) {
-                    try {
-                        cookies().set({ name, value, ...options })
-                    } catch {}
-                },
-                remove(name: string, options: CookieOptions) {
-                    try {
-                        cookies().set({ name, value: '', ...options })
-                    } catch {}
-                },
-            },
-        },
-    )
-    const ses = await supabase.auth.getSession(
-        // {
-        //     access_token: cookies().get('access_token')?.value,
-        //     refresh_token: cookies().get('refresh_token')?.value
-        // }
-    )
-    console.log('u', await supabase.auth.getUser())
     
-    if (ses.data?.session) redirect('/')
+    const us_ph = cookies().get('user_phone')
+    const se_id = cookies().get('session_id')    
+    if (us_ph && se_id) redirect('/')
     
     async function handler({phone}:{phone:string}) {
         'use server'
-        
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    get(name: string) {
+                        return cookies().get(name)?.value
+                    },
+                    set(name: string, value: string, options: CookieOptions) {
+                        try {
+                            cookies().set({ name, value, ...options })
+                        } catch {}
+                    },
+                    remove(name: string, options: CookieOptions) {
+                        try {
+                            cookies().set({ name, value: '', ...options })
+                        } catch {}
+                    },
+                },
+            },
+        )
         console.log({phone})
         if (!phone) return {
             error: 'need phone',
@@ -64,16 +59,38 @@ export default async function Login() {
     async function verify({phone, code}:{phone:string, code:string}) {
         'use server'
 
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    get(name: string) {
+                        return cookies().get(name)?.value
+                    },
+                    set(name: string, value: string, options: CookieOptions) {
+                        try {
+                            cookies().set({ name, value, ...options })
+                        } catch {}
+                    },
+                    remove(name: string, options: CookieOptions) {
+                        try {
+                            cookies().set({ name, value: '', ...options })
+                        } catch {}
+                    },
+                },
+            },
+        )
         const x = await supabase.auth.verifyOtp({phone, token:code, type:'sms'})
-        if (x.error) {
+        if (x?.error) {
             console.log('error verify', x.error)
             return {
                 error: x.error.message
             }
         }
-        cookies().set('access_token', x.data.session!.access_token)
-        cookies().set('refresh_token', x.data.session!.refresh_token)
-        console.log('verify', x)
+        const session_id = randomUUID()
+        cookies().set('user_phone', phone)
+        cookies().set('session_id', session_id)
+        console.log('verify', x, {phone, session_id})
         redirect('/')
     }
     return (

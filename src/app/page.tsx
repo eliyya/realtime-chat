@@ -4,14 +4,15 @@ import Name from '@/components/name'
 import { useSupabase } from '@/hooks/supabase/server'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { EventHandler } from './EventHandler'
 
 export default async function Home() {
-    const supabase = useSupabase(cookies())
-    await supabase.auth.initialize()    
-    const s = await supabase.auth.getSession()
-    // const u = await supabase.auth.getUser()
-    // console.log('session s', s, u)
-    if (!s.data?.session) return redirect('/login')
+    // const supabase = useSupabase(cookies())
+    // await supabase.auth.initialize()    
+    // const s = await supabase.auth.getSession()
+    // // const u = await supabase.auth.getUser()
+    // // console.log('session s', s, u)
+    // if (!s.data?.session) return redirect('/login')
     return (
         <>
             <div className="flex min-h-screen max-[1152px]:px-16 max-[768px]:px-0 px-64">
@@ -23,6 +24,7 @@ export default async function Home() {
                 </aside>
                 <Chat />
             </div>    
+            <EventHandler />
         </>
     )
 }

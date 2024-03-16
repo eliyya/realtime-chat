@@ -1,6 +1,5 @@
 'use client'
-import {useSelectedChat} from '@/hooks/useSelectedChat'
-import {  } from '@/hooks/useDB'
+import {useSelectedChat} from '@/hooks/globalStates'
 
 export default function Chat() {
     const {selectedChat, setSelectedChat} = useSelectedChat()
