@@ -1,11 +1,15 @@
 'use client'
 
+import { createClient } from '@/hooks/supabase/client'
 import { useLocalBD } from '@/hooks/useDB'
-import { useEffect, useState } from 'react'
+import { useName } from '@/hooks/useSelectedChat'
+import { useEffect } from 'react'
 
 export default function Name() {
-    const [name, setName] = useState('your name')
+    const {name, setName} = useName()
     const db = useLocalBD()
+    const supabase = createClient()
+    
     
     useEffect(() => {
         const getName = async () => {
@@ -15,6 +19,28 @@ export default function Name() {
             }
         }
         getName()
-    }, [db])
+        const st = async () => {
+            const user = await supabase.auth.getUser()
+            const user_id = user?.data.user?.id
+            fetch('/api', {
+                headers: {
+                    user_id: user_id!
+                }
+            }).then(r => {
+                // stream
+                const reader = r.body!.getReader()
+                const decoder = new TextDecoder()
+                const read = async () => {
+                    const { done, value } = await reader.read()
+                    if (done) {
+                        return
+                    }
+                    console.log(decoder.decode(value))
+                    read()
+                }
+                read()
+            })
+        }
+    }, [db, setName, supabase.auth])
     return <h1>{name}</h1>
 }
