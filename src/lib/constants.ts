@@ -1,4 +1,4 @@
-export const eventNames = {
+export const EVENT_NAMES = {
     changeName: 'change_name',
     getName: 'get_name',
     infoRequest: 'info_request',
@@ -8,11 +8,11 @@ export const eventNames = {
 } as const
 
 export type events = {
-    [eventNames.changeName]: string
-    [eventNames.getName]: null
-    [eventNames.infoRequest]: { from: string },
-    [eventNames.deleteRequest]: string,
-    [eventNames.infoResponse]: { name: string, user_phone: string }
+    [EVENT_NAMES.changeName]: string
+    [EVENT_NAMES.getName]: null
+    [EVENT_NAMES.infoRequest]: { from: string },
+    [EVENT_NAMES.deleteRequest]: string,
+    [EVENT_NAMES.infoResponse]: { name: string, user_phone: string }
 }
 
 export const JWT_SECRET = new TextEncoder().encode(process.env.NEXT_JWT_SECRET!)

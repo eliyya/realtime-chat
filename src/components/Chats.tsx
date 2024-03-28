@@ -7,7 +7,7 @@ export default function Chats() {
     
     return (<>
         {chats.map((chat) => 
-            <ChatOption key={chat.id} chat={chat} />)}
+            <ChatOption key={chat.phone} chat={chat} />)}
     </>
     )
 }

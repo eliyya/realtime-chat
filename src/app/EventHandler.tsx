@@ -15,7 +15,7 @@ export function EventHandler() {
     const [cookies, setCookie] = useCookies(['user_phone', 'session_id'])
     useEffect(() => {(async ()=>{
         const session = await db.getSesion()
-        if (!session?.token) return setSelectedView(View.login)
+        if (!session?.token) return setSelectedView(View.Login)
         // const abort = new AbortController()
         // fetch('/socket', {
         //     signal: abort.signal

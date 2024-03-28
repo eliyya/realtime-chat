@@ -3,28 +3,23 @@ import { create } from 'zustand'
 import { MyDB, useDB } from './useDB'
 
 export enum View {
-    login,
-    chat,
-    newChat,
-    settings
+    Login,
+    Chat,
+    AddFriend,
 }
 
 export const useSelectedView = create<{
-    selectedChat: number
+    selectedChat: MyDB['chats']['value']['phone']
     selectedView: View
-    setSelectedChat: (value: number) => void
+    setSelectedChat: (value: MyDB['chats']['value']['phone']) => void
     setSelectedView: (value: View) => void
 }>((set) => {
-            useDB().getSesion().then(session => {
-                console.log('session', session)
-                
-                session?.token && set({ selectedView: View.chat })
-            })
+            useDB().getSesion().then(session => session?.token && set({ selectedView: View.Chat }))
             return {
-                selectedChat: -1,
-                setSelectedChat: (selectedChat: number) => set({ selectedChat }),
-                selectedView: View.login,
-                setSelectedView: (selectedView: View) => set({ selectedView }),
+                selectedChat: '',
+                setSelectedChat: (selectedChat) => set({ selectedChat }),
+                selectedView: View.Login,
+                setSelectedView: (selectedView) => set({ selectedView }),
             }
         })
 

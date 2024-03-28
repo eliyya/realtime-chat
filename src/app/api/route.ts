@@ -1,6 +1,6 @@
 import EventEmitter from 'events'
 import { NextRequest, NextResponse } from 'next/server'
-import { eventNames, events } from '@/lib/constants'
+import { EVENT_NAMES, events } from '@/lib/constants'
 
 type user_phone = string
 type session_id = string
@@ -25,21 +25,21 @@ export async function POST(req: NextRequest) {
     if (all.has(session_id)) {
         const event = await req.json()
         console.log('event', event)
-        if (event.name === eventNames.infoRequest) {
+        if (event.name === EVENT_NAMES.infoRequest) {
             const other = Array.from(all).filter(e=>e!==session_id)[0]
-            if (other) emitter.emit(`${user_phone}+${other}`, { name: eventNames.infoRequest, value: { from: session_id } })
+            if (other) emitter.emit(`${user_phone}+${other}`, { name: EVENT_NAMES.infoRequest, value: { from: session_id } })
             return new NextResponse(JSON.stringify({ user_phone, session_id, requested: other }))
         }
-        else if (event.name === eventNames.deleteRequest) {
+        else if (event.name === EVENT_NAMES.deleteRequest) {
             all.delete(event.value)
             emitter.emit(`${user_phone}+${event.value}+delete`, { name: 'delete_request', value: event.value})
             const other = Array.from(all)[0]
-            if (other) emitter.emit(`${user_phone}+${other}`, { name: eventNames.infoRequest, value: { from: session_id } })
+            if (other) emitter.emit(`${user_phone}+${other}`, { name: EVENT_NAMES.infoRequest, value: { from: session_id } })
             return new NextResponse(JSON.stringify({ user_phone, session_id, requested: other }))
-        } else if (event.name === eventNames.infoResponse) {
+        } else if (event.name === EVENT_NAMES.infoResponse) {
             const other = Array.from(all)[0]
-            if (other) emitter.emit(`${user_phone}+${event.value.to}`, { name: eventNames.infoResponse, value: { name: event.value.name, user_phone } })
-        } else if (event.name === eventNames.sendMessage) {
+            if (other) emitter.emit(`${user_phone}+${event.value.to}`, { name: EVENT_NAMES.infoResponse, value: { name: event.value.name, user_phone } })
+        } else if (event.name === EVENT_NAMES.sendMessage) {
             all.forEach(other=>{
                 // emitter.emit(`${user_phone}+${other}`, { name: eventNames.sendMessage, value: { to: event.value.to, message: event.value.message } })
             })
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     } else {
         const other = Array.from(all)[0]
         all.add(session_id)
-        if (other) emitter.emit(`${user_phone}+${other}`, { name: eventNames.infoRequest, value: { from: session_id } })
+        if (other) emitter.emit(`${user_phone}+${other}`, { name: EVENT_NAMES.infoRequest, value: { from: session_id } })
         return new NextResponse(JSON.stringify({ user_phone, session_id, requested: other }))
     }
 }

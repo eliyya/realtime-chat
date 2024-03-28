@@ -1,13 +1,14 @@
 'use client'
 
 import {useSelectedView} from '@/hooks/globalStates'
+import { MyDB } from '@/hooks/useDB'
 
-export default function ChatOption({chat}: {chat: {name:string, id:number}}) {
+export default function ChatOption({chat}: {chat: MyDB['chats']['value']}) {
     const {setSelectedChat} = useSelectedView()
     return <div className="p-3" onClick={() => {
-        setSelectedChat(chat.id)
+        setSelectedChat(chat.phone)
         console.log(chat)
-    }} data-label={chat.id} aria-selected="false">
+    }} data-label={chat.phone} aria-selected="false">
         <label>{chat.name}</label>
     </div>
 }
