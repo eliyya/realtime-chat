@@ -1,25 +1,13 @@
 'use client'
-import { useLocalBD } from '@/hooks/useDB'
-import { useEffect, useState } from 'react'
-import ChatOption from './chat_option'
+import ChatOption from './ChatOption'
+import { useChats } from '@/hooks/globalStates'
 
 export default function Chats() {
-    const [chats, setChats] = useState<{name:string, id:number}[]>([])
-    const db = useLocalBD()
+    const {chats} = useChats()
     
-    useEffect(() => {
-        const getAll = async () => {
-            const ch = await db.getChats()
-            console.log('e',ch)
-            setChats(ch)
-        }
-        getAll()
-    }, [db])
-    
-    return (
-        <section className="">
-            {chats.map((chat) => 
-                <ChatOption key={chat.id} chat={chat} />)}
-        </section>
+    return (<>
+        {chats.map((chat) => 
+            <ChatOption key={chat.id} chat={chat} />)}
+    </>
     )
 }

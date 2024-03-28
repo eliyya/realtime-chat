@@ -1,9 +1,9 @@
 'use client'
 
-import {useSelectedChat} from '@/hooks/globalStates'
+import {useSelectedView} from '@/hooks/globalStates'
 
 export default function ChatOption({chat}: {chat: {name:string, id:number}}) {
-    const {setSelectedChat} = useSelectedChat()
+    const {setSelectedChat} = useSelectedView()
     return <div className="p-3" onClick={() => {
         setSelectedChat(chat.id)
         console.log(chat)

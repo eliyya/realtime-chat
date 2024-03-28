@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
         } else if (event.name === eventNames.infoResponse) {
             const other = Array.from(all)[0]
             if (other) emitter.emit(`${user_phone}+${event.value.to}`, { name: eventNames.infoResponse, value: { name: event.value.name, user_phone } })
+        } else if (event.name === eventNames.sendMessage) {
+            all.forEach(other=>{
+                // emitter.emit(`${user_phone}+${other}`, { name: eventNames.sendMessage, value: { to: event.value.to, message: event.value.message } })
+            })
         }
         return new NextResponse(JSON.stringify({status: 'ok'}))
     } else {
@@ -66,17 +70,16 @@ export async function GET(req: NextRequest) {
                 emitter.removeAllListeners(`${user_phone}+${session_id}`)
                 controller.close()                
                 console.log('closed', user_phone, session_id)
-                
             })            
         },
     }))
 }
 
 export async function DELETE(req: NextRequest) {
-    const user_phone = req.cookies.get('user_phone')!.value
-    const session_id = req.cookies.get('session_id')!.value
-    users.get(user_phone)?.delete(session_id)
-    emitter.emit(`${user_phone}+${session_id}+delete`, { name: 'delete_request', value: session_id})
+    const user_phone = req.cookies.get('user_phone')?.value
+    const session_id = req.cookies.get('session_id')?.value
+    users.get(user_phone??'')?.delete(session_id??'')
+    emitter.emit(`${user_phone}+${session_id}+delete`, { name: 'delete_request', value: session_id!})
     console.log('delete', user_phone, session_id)
     
     return new NextResponse('ok')

@@ -1,19 +1,22 @@
-import { DBSchema, IDBPDatabase, openDB, wrap } from 'idb'
-import { useSyncExternalStore } from 'react'
+import { DBSchema, IDBPDatabase, openDB } from 'idb'
+// import { useSyncExternalStore } from 'react'
 
-interface MyDB extends DBSchema {
+export interface MyDB extends DBSchema {
     chats: {
         value: {
             name: string;
-            id: number;
+            phone: string;
         };
-        key: number;
-        indexes: { 'by-id': number };
+        key: string;
+        indexes: { 
+            'by-phone': string
+        };
     };
-    sesion: {
+    session: {
         value: {
-            user_phone: string;
+            phone: string;
             session_id: string;
+            token: string;
         };
         key: string;
     };
@@ -47,20 +50,20 @@ class LocalDB {
     async addChat(chat: MyDB['chats']['value']) {
         if (this.db == null) return
         const db = await this.db
-        db.put('chats', chat, chat.id)
+        db.put('chats', chat, chat.phone)
     }
 
     async getSesion() {
         if (this.db == null) return
         const db = await this.db
-        return db.get('sesion', 'sesion')
+        return db.get('session', 'sesion')
     }
 
     async setSesion(sesion: MyDB['sesion']['value']) {
         if (this.db == null) return
         const db = await this.db
         try {
-            await db.add('sesion', sesion, 'sesion')
+            await db.add('session', sesion, 'sesion')
         } catch {}
     }
 
@@ -84,26 +87,43 @@ class LocalDB {
 }
 
 const ldb = new LocalDB(null)
-const sldb = new LocalDB(null)
+// const sldb = new LocalDB(null)
 
-export function useLocalBD() {
-    const u = useSyncExternalStore(
-        () => () => { },
-        () => ldb.db ? ldb : ldb.setDB(openDB<MyDB>('rchat', 1, {
-            upgrade: (db) => {
-                db.createObjectStore('chats', {
-                    keyPath: 'id',
-                    autoIncrement: true,
-                }).createIndex('by-id', 'id', {
-                    unique: true
-                })
+// export function useLocalBD() {
+//     const u = useSyncExternalStore(
+//         () => () => { },
+//         () => ldb.db ? ldb : ldb.setDB(openDB<MyDB>('rchat', 0.1, {
+//             upgrade: (db) => {
+//                 const ch = db.createObjectStore('chats', {
+//                     keyPath: 'id',
+//                     autoIncrement: true,
+//                 })
+//                 ch.createIndex('by-phone', 'phone', {
+//                     unique: true
+//                 })
 
-                db.createObjectStore('sesion')
-                db.createObjectStore('info')
-            }
-        })
-        ),
-        () => sldb
-    )
-    return u
+//                 db.createObjectStore('sesion')
+//                 db.createObjectStore('info')
+//             }
+//         })
+//         ),
+//         () => sldb
+//     )
+//     return u
+// }
+
+export function useDB() {
+    return ldb.db ? ldb : ldb.setDB(openDB<MyDB>('rchat', 2, {
+        upgrade: (db) => {
+            db.createObjectStore('chats', {
+                keyPath: 'id',
+                autoIncrement: true,
+            }).createIndex('by-phone', 'phone', {
+                unique: true
+            })
+
+            db.createObjectStore('session')
+            db.createObjectStore('info')
+        }
+    }))
 }
