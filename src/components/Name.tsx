@@ -8,5 +8,5 @@ export default function Name() {
     const { info } = useDB()
     const { setSelectedView } = useSelectedView()
 
-    return <h1 onClick={() => setSelectedView(View.Settings)} >{info?.name ?? 'Your Name'}</h1>
+    return <h1 className='cursor-pointer' onClick={() => setSelectedView(View.Settings)} >{info?.name ?? 'Your Name'}</h1>
 }

@@ -1,6 +1,5 @@
 import { DBSchema, IDBPDatabase, openDB } from 'idb'
 import { create } from 'zustand'
-// import { useSyncExternalStore } from 'react'
 
 export interface RTCSchemma extends DBSchema {
     chats: {
@@ -33,8 +32,7 @@ export interface RTCSchemma extends DBSchema {
 const pdb = openDB<RTCSchemma>('rchat', 2, {
     upgrade: (db) => {
         db.createObjectStore('chats', {
-            keyPath: 'id',
-            autoIncrement: true,
+            keyPath: 'phone',
         }).createIndex('by-phone', 'phone', {
             unique: true
         })
@@ -56,6 +54,8 @@ type useDBType = {
     deleteInfo: () => void
 
     chats: RTCSchemma['chats']['value'][]
+    addChat: (chat: RTCSchemma['chats']['value']) => RTCSchemma['chats']['value']
+    deleteChat: (phone: string) => void
 }
 
 export const useDB = create<useDBType>((set,use) => {
@@ -66,8 +66,18 @@ export const useDB = create<useDBType>((set,use) => {
         const info = await db.get('info', 'info')
         set({info})
 
-        const chats = await db.getAll('chats')
-        set({chats})
+        const chats = await db.getAll('chats')   
+        if (session?.token && !chats?.some(c => c.phone === session.phone)) {
+            set({chats: [{
+                name: 'Chat With You',
+                phone: session.phone
+            }]}) 
+            db.add('chats', {
+                name: 'Chat With You',
+                phone: session.phone
+            })
+        }
+        else set({chats})
     })
     
     return {
@@ -88,6 +98,12 @@ export const useDB = create<useDBType>((set,use) => {
             try {
                 db?.delete('session', 'sesion')
             } catch {}
+            try {
+                db?.delete('info', 'info')
+            } catch {}
+            try {
+                db?.clear('chats')
+            } catch {}
         },
 
         info: undefined,
@@ -107,6 +123,21 @@ export const useDB = create<useDBType>((set,use) => {
             } catch {}
         },
 
-        chats: []
+        chats: [],
+        addChat(chat: RTCSchemma['chats']['value']) {
+            const {chats, db} = use()
+            set({chats: [...chats, chat]})
+            try {
+                db?.add('chats', chat)
+            } catch {}
+            return chat
+        },
+        deleteChat(phone: string) {
+            const {chats, db} = use()
+            set({chats: chats.filter(c => c.phone !== phone)})
+            try {
+                db?.delete('chats', phone)
+            } catch {}
+        }
     }
 })

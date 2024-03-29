@@ -19,7 +19,7 @@ export default async function Home() {
                         <AddFriendButton />
                     </section>
                 </aside>
-                <main className="text-center flex-grow flex flex-col justify-between border">
+                <main className="text-center flex-grow flex flex-col justify-between border first:p-64 first:bg-slate-950/5">
                     <MainView />
                 </main>
             </div>    
