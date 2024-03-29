@@ -34,7 +34,7 @@ export function Chat(){
     if (!selectedChat) return (
         <>
             <span></span>
-            <span>select a chat to open it {sessions.map(s=>s.session_id).join('|')}</span>
+            <span>select a chat to open it</span>
             <span></span>
         </>
     )
