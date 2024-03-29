@@ -1,3 +1,8 @@
+import { RTCSchemma } from '@/hooks/useDB'
+import EventEmitter from 'events'
+import { NextRequest, NextResponse } from 'next/server'
+import { Client } from './Clients'
+
 export const JWT_SECRET = new TextEncoder().encode(process.env.NEXT_JWT_SECRET!)
 
 export enum CookieName {
@@ -9,6 +14,7 @@ export enum CookieName {
 export enum ClientEventName {
     NewConnection,
     DuplicateConnection,
+    NewMessage
 }
 
 export enum View {
@@ -25,6 +31,18 @@ export type ClientEvent = {
 } | {
     event: ClientEventName.DuplicateConnection
     data: {phone: string; session_id: string}
+} | {
+    event: ClientEventName.NewMessage
+    data: RTCSchemma['messages_to_send']['value'] & { from: string }
+}
+
+export enum ServerEventName {
+    SendMessage,
+}
+
+export type ServerEvent = {
+    event: ServerEventName.SendMessage
+    data: RTCSchemma['messages_to_send']['value']
 }
 
 export enum FormatColors {
@@ -60,4 +78,10 @@ export enum ForegroundColors {
     Cyan = '\x1b[36m',
     White = '\x1b[37m',
     Gray = '\x1b[90m',
+}
+
+export type ServerEventFunctionHandlerProps = {
+    req: NextRequest 
+    body: ServerEvent,
+    session: {phone: string; session_id: string; platform: string}
 }

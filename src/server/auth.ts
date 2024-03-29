@@ -4,7 +4,7 @@ import { JWT_SECRET } from '@/lib/constants'
 import { CookieOptions, createServerClient } from '@supabase/ssr'
 import { randomUUID } from 'crypto'
 import { SignJWT, jwtVerify } from 'jose'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 export async function sendCode({phone}:{phone:string}) {
     const supabase = createServerClient(
@@ -54,12 +54,15 @@ export async function verifyCode({phone, code}:{phone:string, code:string}) {
         }
     }
     const session_id = randomUUID()
-    const token = await new SignJWT({phone, session_id}).setProtectedHeader({ alg: 'HS256' }).sign(JWT_SECRET)
+    const userAgent = headers().get('user-agent')?.toLowerCase()??''
+    const platform = userAgent.includes('android') ? 'android' : userAgent.includes('linux') ? 'linux' : userAgent.includes('windows') ? 'windows' : 'unknown'
+    const token = await new SignJWT({phone, session_id, platform}).setProtectedHeader({ alg: 'HS256' }).sign(JWT_SECRET)
 
     return {
         phone,
         token,
-        session_id
+        session_id,
+        platform
     }
 }
 
@@ -68,6 +71,7 @@ export async function getSessionPayload(token: string) {
         const {payload} = await jwtVerify<{
             phone: string
             session_id: string
+            platform: string
         }>(token, JWT_SECRET)
         return payload
     } catch (error) {
@@ -85,8 +89,8 @@ export async function getSessionPayload(token: string) {
 
 export async function getSession(token: string) {
     try {
-        const {phone, session_id} = await getSessionPayload(token)
-        return {phone, session_id}
+        const {phone, session_id,platform} = await getSessionPayload(token)
+        return {phone, session_id, platform}
     } catch (error) {
         return null
     }

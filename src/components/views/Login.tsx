@@ -22,7 +22,7 @@ export function Login() {
             return setStep(1)
         }
         
-        const {error,session_id,token} = await verifyCode({phone, code})
+        const {error,session_id,token,platform} = await verifyCode({phone, code})
         if (error) {
             alert(error)
             setCode('')
@@ -33,7 +33,8 @@ export function Login() {
             setCode('')
             return setStep(0)
         }
-        setSession({token, session_id, phone})
+        
+        setSession({token, session_id, phone, platform})
         setSelectedView(View.Chat)
     }
 

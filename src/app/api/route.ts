@@ -1,61 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
-import EventEmitter from 'events'
 import { getSession } from '@/server/auth'
-import { ClientEventName, ForegroundColors, FormatColors } from '@/lib/constants'
-import { randomUUID } from 'crypto'
-
-const eventEmitter = new EventEmitter()
-const clients = new Map<string, Array<{session_id: string;phone: string;socket_id: string}>>()
+import { ClientEventName, ForegroundColors, FormatColors, ServerEvent, ServerEventName } from '@/lib/constants'
+import { sendMessage } from './events/sendMessage'
+import { Client, clients } from '@/lib/Clients'
 
 export async function GET(req: NextRequest) {
     // check session
-    const userAgent = req.headers.get('user-agent')?.toLowerCase()??''
-    const platform = userAgent.includes('android') ? 'android' : userAgent.includes('linux') ? 'linux' : userAgent.includes('windows') ? 'windows' : 'unknown'
     const token = req.headers.get('authorization')
     if (!token) return new NextResponse('unauthorized', { status: 401 })
     const session = await getSession(token)
     if (!session) return new NextResponse('unauthorized', { status: 401 })
     
     // check if client is already connected
-    const { phone, session_id } = session
-    const socket_id = randomUUID()
-    clients.has(phone) || clients.set(phone, [])
-    clients.set(phone, clients.get(phone)!.filter(s => {
-        if (s.session_id !== session_id) return true
-        eventEmitter.emit(`${phone}+${session_id}+${s.socket_id}+cancel`)    
-    }))
-    clients.get(phone)?.push({ session_id, phone, socket_id: socket_id })
+    const userAgent = req.headers.get('user-agent')?.toLowerCase()??''
+    const platform = userAgent.includes('android') ? 'android' : userAgent.includes('linux') ? 'linux' : userAgent.includes('windows') ? 'windows' : 'unknown'
+    const { session_id } = session
+    clients.has(session.phone) || clients.set(session.phone, new Client(session.phone, platform))
+    const client = clients.get(session.phone)!
+    const id = client.addSession(session_id)
 
-    const onCancell = () => {
-        eventEmitter.removeAllListeners(`${phone}+${session_id}`)
-        clients.set(phone, clients.get(phone)!.filter(s => s.socket_id !== socket_id))
-        if (!clients.get(phone)?.length) clients.delete(phone)
-        console.log(ForegroundColors.Blue, 'Disconnected', FormatColors.Reset, phone, session_id, 'events:', eventEmitter.listeners(`${phone}+${session_id}`).length)
-    }
     // create events stream
     const response = new NextResponse(new ReadableStream({
-        cancel: () => onCancell(),
+        cancel: () => client.removeSession(session_id, id),
         start(controller) {
-            eventEmitter.on(`${phone}+${session_id}+${socket_id}`, (event, data) => {
+            client.emitter.on(`${session_id}+${id}`, (event, data) => {
+                console.log('trying to send', client.phone, session_id, id, event, data)
                 try {
                     controller.enqueue(JSON.stringify({event, data}))
                 } catch (error) {
                     console.log('error enqueue', (error as Error).message)
                 }
             })            
-            eventEmitter.once(`${phone}+${session_id}+${socket_id}+cancel`, () => {
-                console.log('trying to close', phone, session_id, socket_id)
+            client.emitter.once(`${session_id}+${id}+cancel`, () => {
+                console.log('trying to close', client.phone, session_id, id)
                 try {
-                    controller.enqueue(JSON.stringify({event: ClientEventName.DuplicateConnection, data: {phone, session_id}}))
+                    controller.enqueue(JSON.stringify({event: ClientEventName.DuplicateConnection, data: {phone:client.phone, session_id}}))
                     controller.close()
-                } catch {}4
-                eventEmitter.removeAllListeners(`${phone}+${session_id}+${socket_id}`)
+                } catch {}
+                client.removeSession(session_id, id)
             })
         },
     }))
 
-    console.log(ForegroundColors.Blue, 'Connected', FormatColors.Reset, phone, session_id, 'events:', eventEmitter.listeners(`${phone}+${session_id}+${socket_id}`).length)
-    clients.get(phone)?.forEach(session => eventEmitter.emit(`${phone}+${session.session_id}+${session.socket_id}`, ClientEventName.NewConnection, {session_id, platform}))
-    
+    console.log(ForegroundColors.Blue, 'Connected', FormatColors.Reset, client.phone, session_id, 'events:', client.emitter.listeners(`${session_id}+${id}`).length)    
     return response
+}
+
+export async function POST(req: NextRequest) {
+    // check session
+    const token = req.headers.get('authorization')
+    if (!token) return new NextResponse('unauthorized', { status: 401 })
+    const session = await getSession(token)
+    if (!session) return new NextResponse('unauthorized', { status: 401 })
+    
+    let body: ServerEvent | undefined
+    try {
+        body = await req.json()
+    } catch {}
+    if (!body) return new NextResponse('invalid request', { status: 400 })
+
+    if (body.event === ServerEventName.SendMessage) return sendMessage({ body, session, req })
+    
+    return new NextResponse('ok')
 }
