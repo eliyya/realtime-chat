@@ -1,9 +1,9 @@
 'use client'
+import { useDB } from '@/hooks/useDB'
 import ChatOption from './ChatOption'
-import { useChats } from '@/hooks/globalStates'
 
 export default function Chats() {
-    const {chats} = useChats()
+    const {chats} = useDB()
     
     return (<>
         {chats.map((chat) => 

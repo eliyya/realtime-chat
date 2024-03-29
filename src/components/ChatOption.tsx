@@ -1,9 +1,9 @@
 'use client'
 
 import {useSelectedView} from '@/hooks/globalStates'
-import { MyDB } from '@/hooks/useDB'
+import { RTCSchemma } from '@/hooks/useDB'
 
-export default function ChatOption({chat}: {chat: MyDB['chats']['value']}) {
+export default function ChatOption({chat}: {chat: RTCSchemma['chats']['value']}) {
     const {setSelectedChat} = useSelectedView()
     return <div className="p-3" onClick={() => {
         setSelectedChat(chat.phone)

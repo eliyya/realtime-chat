@@ -1,7 +1,8 @@
 import { DBSchema, IDBPDatabase, openDB } from 'idb'
+import { create } from 'zustand'
 // import { useSyncExternalStore } from 'react'
 
-export interface MyDB extends DBSchema {
+export interface RTCSchemma extends DBSchema {
     chats: {
         value: {
             name: string;
@@ -29,101 +30,83 @@ export interface MyDB extends DBSchema {
     }
 }
 
-class LocalDB {
-    db: Promise<IDBPDatabase<MyDB>> | null = null
+const pdb = openDB<RTCSchemma>('rchat', 2, {
+    upgrade: (db) => {
+        db.createObjectStore('chats', {
+            keyPath: 'id',
+            autoIncrement: true,
+        }).createIndex('by-phone', 'phone', {
+            unique: true
+        })
 
-    constructor(db: Promise<IDBPDatabase<MyDB>> | null) {
-        this.db = db
+        db.createObjectStore('session')
+        db.createObjectStore('info')
     }
+})
 
-    setDB(db: Promise<IDBPDatabase<MyDB>> | null) {
-        this.db = db
-        return this
-    }
+type useDBType = {
+    db: Awaited<Promise<IDBPDatabase<RTCSchemma>>> | undefined
 
-    async getChats() {
-        if (this.db == null) return []
-        const db = await this.db
-        return db.getAll('chats')
-    }
+    session: RTCSchemma['session']['value'] | undefined
+    setSession: (session: RTCSchemma['session']['value']) => RTCSchemma['session']['value']
+    deleteSesion: () => void
 
-    async addChat(chat: MyDB['chats']['value']) {
-        if (this.db == null) return
-        const db = await this.db
-        db.put('chats', chat, chat.phone)
-    }
+    info: RTCSchemma['info']['value'] | undefined
+    setInfo: (info: RTCSchemma['info']['value']) => RTCSchemma['info']['value']
+    deleteInfo: () => void
 
-    async getSesion() {
-        if (this.db == null) return
-        const db = await this.db
-        return db.get('session', 'sesion')
-    }
-
-    async setSesion(sesion: MyDB['sesion']['value']) {
-        if (this.db == null) return
-        const db = await this.db
-        try {
-            await db.add('session', sesion, 'sesion')
-        } catch {}
-    }
-
-    async getInfo() {
-        if (this.db == null) return
-        const db = await this.db
-        return db.get('info', 'info')
-    }
-
-    async setInfo(info: MyDB['info']['value']) {
-        if (this.db == null) return
-        const db = await this.db
-        try {
-            await db.add('info', info, 'info')
-        } catch {}    
-    }
-
-    isBrowser() {
-        return this.db != null
-    }
+    chats: RTCSchemma['chats']['value'][]
 }
 
-const ldb = new LocalDB(null)
-// const sldb = new LocalDB(null)
+export const useDB = create<useDBType>((set,use) => {
+    pdb.then(async db => {
+        set({db})
+        const session = await db.get('session', 'sesion')
+        set({session})
+        const info = await db.get('info', 'info')
+        set({info})
 
-// export function useLocalBD() {
-//     const u = useSyncExternalStore(
-//         () => () => { },
-//         () => ldb.db ? ldb : ldb.setDB(openDB<MyDB>('rchat', 0.1, {
-//             upgrade: (db) => {
-//                 const ch = db.createObjectStore('chats', {
-//                     keyPath: 'id',
-//                     autoIncrement: true,
-//                 })
-//                 ch.createIndex('by-phone', 'phone', {
-//                     unique: true
-//                 })
+        const chats = await db.getAll('chats')
+        set({chats})
+    })
+    
+    return {
+        db: undefined,
+        
+        session: undefined,
+        setSession(session: RTCSchemma['session']['value']) {
+            set({session})
+            const {db} = use()
+            try {
+                db?.put('session', session, 'sesion')
+            } catch {}
+            return session
+        },
+        deleteSesion() {
+            set({session: undefined})
+            const {db} = use()
+            try {
+                db?.delete('session', 'sesion')
+            } catch {}
+        },
 
-//                 db.createObjectStore('sesion')
-//                 db.createObjectStore('info')
-//             }
-//         })
-//         ),
-//         () => sldb
-//     )
-//     return u
-// }
+        info: undefined,
+        setInfo(info: RTCSchemma['info']['value']) {
+            set({info})
+            const {db} = use()
+            try {
+                db?.put('info', info, 'info')
+            } catch {}
+            return info
+        },
+        deleteInfo() {
+            set({info: undefined})
+            const {db} = use()
+            try {
+                db?.delete('info', 'info')
+            } catch {}
+        },
 
-export function useDB() {
-    return ldb.db ? ldb : ldb.setDB(openDB<MyDB>('rchat', 2, {
-        upgrade: (db) => {
-            db.createObjectStore('chats', {
-                keyPath: 'id',
-                autoIncrement: true,
-            }).createIndex('by-phone', 'phone', {
-                unique: true
-            })
-
-            db.createObjectStore('session')
-            db.createObjectStore('info')
-        }
-    }))
-}
+        chats: []
+    }
+})

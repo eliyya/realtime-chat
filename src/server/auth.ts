@@ -3,7 +3,7 @@
 import { JWT_SECRET } from '@/lib/constants'
 import { CookieOptions, createServerClient } from '@supabase/ssr'
 import { randomUUID } from 'crypto'
-import { SignJWT } from 'jose'
+import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
 export async function sendCode({phone}:{phone:string}) {
@@ -54,14 +54,40 @@ export async function verifyCode({phone, code}:{phone:string, code:string}) {
         }
     }
     const session_id = randomUUID()
-    cookies().set('user_phone', phone)
-    cookies().set('session_id', session_id)
     const token = await new SignJWT({phone, session_id}).setProtectedHeader({ alg: 'HS256' }).sign(JWT_SECRET)
-    cookies().set('session', token)
 
     return {
         phone,
         token,
         session_id
+    }
+}
+
+export async function getSessionPayload(token: string) {
+    try {
+        const {payload} = await jwtVerify<{
+            phone: string
+            session_id: string
+        }>(token, JWT_SECRET)
+        return payload
+    } catch (error) {
+        if (error instanceof Error && (
+            error.message.includes('JWS Protected Header is invalid') ||
+            error.message.includes('signature verification failed') ||
+            error.message.includes('timestamp check failed')
+        )) {
+            throw new Error('Invalid token', {cause: error.message})
+        } else {
+            throw error
+        }
+    }
+}
+
+export async function getSession(token: string) {
+    try {
+        const {phone, session_id} = await getSessionPayload(token)
+        return {phone, session_id}
+    } catch (error) {
+        return null
     }
 }

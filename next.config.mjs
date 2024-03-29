@@ -1,4 +1,12 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+    experimental: {
+        serverActions: {
+            allowedOrigins: [
+                'https://*-3000.usw3.devtunnels.ms'
+            ]
+        }
+    }
+}
 
-export default nextConfig;
+export default nextConfig

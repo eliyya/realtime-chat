@@ -1,16 +1,16 @@
 'use client'
 
-import { View, useSelectedView, useSession } from '@/hooks/globalStates'
+import { useSelectedView } from '@/hooks/globalStates'
 import { useDB } from '@/hooks/useDB'
-import { sendCode, verifyCode } from '@/server/login'
+import { View } from '@/lib/constants'
+import { sendCode, verifyCode } from '@/server/auth'
 import { FormEventHandler, useState } from 'react'
 
 export function Login() {
     const [phone, setPhone] = useState('')
     const [code, setCode] = useState('')
     const [step, setStep] = useState(0)
-    const { setSession } = useSession()
-    const db = useDB()
+    const { setSession } = useDB()
     const { setSelectedView} = useSelectedView()
 
     const login: FormEventHandler<HTMLFormElement> = async (e) => {
@@ -33,7 +33,6 @@ export function Login() {
             setCode('')
             return setStep(0)
         }
-        db.setSesion({token, session_id, phone})
         setSession({token, session_id, phone})
         setSelectedView(View.Chat)
     }

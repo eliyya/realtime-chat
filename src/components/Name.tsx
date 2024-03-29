@@ -1,9 +1,12 @@
 'use client'
 
-import { useName } from '@/hooks/globalStates'
+import { useSelectedView } from '@/hooks/globalStates'
+import { useDB } from '@/hooks/useDB'
+import { View } from '@/lib/constants'
 
 export default function Name() {
-    const { name } = useName()
-    
-    return <h1>{name}</h1>
+    const { info } = useDB()
+    const { setSelectedView } = useSelectedView()
+
+    return <h1 onClick={() => setSelectedView(View.Settings)} >{info?.name ?? 'Your Name'}</h1>
 }

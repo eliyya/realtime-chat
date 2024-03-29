@@ -1,86 +1,61 @@
-import EventEmitter from 'events'
 import { NextRequest, NextResponse } from 'next/server'
-import { EVENT_NAMES, events } from '@/lib/constants'
+import EventEmitter from 'events'
+import { getSession } from '@/server/auth'
+import { ClientEventName, ForegroundColors, FormatColors } from '@/lib/constants'
+import { randomUUID } from 'crypto'
 
-type user_phone = string
-type session_id = string
-
-const users = new Map<user_phone, Set<session_id>>()
-const emitter = new EventEmitter() as MyEventEmitter
-
-interface MyEventEmitter {
-    emit<T extends keyof events>(event: string, args: {name:T, value: events[T]}): void
-    on<T extends keyof events>(event: string, listener: (args: {name:T, value: events[T]}) => void): void
-    once<T extends keyof events>(event: string, listener: (args: {name:T, value: events[T]}) => void): void
-    removeListener(event: string, listener: (args: any) => void): void
-    removeAllListeners(event?: string | symbol | undefined): void
-}
-
-export async function POST(req: NextRequest) {
-    const user_phone = req.cookies.get('user_phone')?.value
-    const session_id = req.cookies.get('session_id')?.value
-    if (!user_phone || !session_id) return new NextResponse('Unauthorized', { status: 401 })
-    if (!users.has(user_phone)) users.set(user_phone, new Set())
-    const all = users.get(user_phone)!
-    if (all.has(session_id)) {
-        const event = await req.json()
-        console.log('event', event)
-        if (event.name === EVENT_NAMES.infoRequest) {
-            const other = Array.from(all).filter(e=>e!==session_id)[0]
-            if (other) emitter.emit(`${user_phone}+${other}`, { name: EVENT_NAMES.infoRequest, value: { from: session_id } })
-            return new NextResponse(JSON.stringify({ user_phone, session_id, requested: other }))
-        }
-        else if (event.name === EVENT_NAMES.deleteRequest) {
-            all.delete(event.value)
-            emitter.emit(`${user_phone}+${event.value}+delete`, { name: 'delete_request', value: event.value})
-            const other = Array.from(all)[0]
-            if (other) emitter.emit(`${user_phone}+${other}`, { name: EVENT_NAMES.infoRequest, value: { from: session_id } })
-            return new NextResponse(JSON.stringify({ user_phone, session_id, requested: other }))
-        } else if (event.name === EVENT_NAMES.infoResponse) {
-            const other = Array.from(all)[0]
-            if (other) emitter.emit(`${user_phone}+${event.value.to}`, { name: EVENT_NAMES.infoResponse, value: { name: event.value.name, user_phone } })
-        } else if (event.name === EVENT_NAMES.sendMessage) {
-            all.forEach(other=>{
-                // emitter.emit(`${user_phone}+${other}`, { name: eventNames.sendMessage, value: { to: event.value.to, message: event.value.message } })
-            })
-        }
-        return new NextResponse(JSON.stringify({status: 'ok'}))
-    } else {
-        const other = Array.from(all)[0]
-        all.add(session_id)
-        if (other) emitter.emit(`${user_phone}+${other}`, { name: EVENT_NAMES.infoRequest, value: { from: session_id } })
-        return new NextResponse(JSON.stringify({ user_phone, session_id, requested: other }))
-    }
-}
+const eventEmitter = new EventEmitter()
+const clients = new Map<string, Array<{session_id: string;phone: string;socket_id: string}>>()
 
 export async function GET(req: NextRequest) {
-    const user_phone = req.cookies.get('user_phone')?.value
-    const session_id = req.cookies.get('session_id')?.value
-    console.log('user_phone', user_phone, 'session_id', session_id)
-    if (!user_phone || !session_id) {
-        return new NextResponse('Unauthorized', { status: 401 })
-    }
+    // check session
+    const userAgent = req.headers.get('user-agent')?.toLowerCase()??''
+    const platform = userAgent.includes('android') ? 'android' : userAgent.includes('linux') ? 'linux' : userAgent.includes('windows') ? 'windows' : 'unknown'
+    const token = req.headers.get('authorization')
+    if (!token) return new NextResponse('unauthorized', { status: 401 })
+    const session = await getSession(token)
+    if (!session) return new NextResponse('unauthorized', { status: 401 })
     
-    return new Response(new ReadableStream({
-        async pull(controller) {
-            emitter.removeAllListeners(`${user_phone}+${session_id}`)
-            emitter.on(`${user_phone}+${session_id}`, (ev)=>controller.enqueue(JSON.stringify(ev)))
-            emitter.removeAllListeners(`${session_id}+${user_phone}+delete`)
-            emitter.once(`${session_id}+${user_phone}+delete`, () => {
-                emitter.removeAllListeners(`${user_phone}+${session_id}`)
-                controller.close()                
-                console.log('closed', user_phone, session_id)
+    // check if client is already connected
+    const { phone, session_id } = session
+    const socket_id = randomUUID()
+    clients.has(phone) || clients.set(phone, [])
+    clients.set(phone, clients.get(phone)!.filter(s => {
+        if (s.session_id !== session_id) return true
+        eventEmitter.emit(`${phone}+${session_id}+${s.socket_id}+cancel`)    
+    }))
+    clients.get(phone)?.push({ session_id, phone, socket_id: socket_id })
+
+    const onCancell = () => {
+        eventEmitter.removeAllListeners(`${phone}+${session_id}`)
+        clients.set(phone, clients.get(phone)!.filter(s => s.socket_id !== socket_id))
+        if (!clients.get(phone)?.length) clients.delete(phone)
+        console.log(ForegroundColors.Blue, 'Disconnected', FormatColors.Reset, phone, session_id, 'events:', eventEmitter.listeners(`${phone}+${session_id}`).length)
+    }
+    // create events stream
+    const response = new NextResponse(new ReadableStream({
+        cancel: () => onCancell(),
+        start(controller) {
+            eventEmitter.on(`${phone}+${session_id}+${socket_id}`, (event, data) => {
+                try {
+                    controller.enqueue(JSON.stringify({event, data}))
+                } catch (error) {
+                    console.log('error enqueue', (error as Error).message)
+                }
             })            
+            eventEmitter.once(`${phone}+${session_id}+${socket_id}+cancel`, () => {
+                console.log('trying to close', phone, session_id, socket_id)
+                try {
+                    controller.enqueue(JSON.stringify({event: ClientEventName.DuplicateConnection, data: {phone, session_id}}))
+                    controller.close()
+                } catch {}4
+                eventEmitter.removeAllListeners(`${phone}+${session_id}+${socket_id}`)
+            })
         },
     }))
-}
 
-export async function DELETE(req: NextRequest) {
-    const user_phone = req.cookies.get('user_phone')?.value
-    const session_id = req.cookies.get('session_id')?.value
-    users.get(user_phone??'')?.delete(session_id??'')
-    emitter.emit(`${user_phone}+${session_id}+delete`, { name: 'delete_request', value: session_id!})
-    console.log('delete', user_phone, session_id)
+    console.log(ForegroundColors.Blue, 'Connected', FormatColors.Reset, phone, session_id, 'events:', eventEmitter.listeners(`${phone}+${session_id}+${socket_id}`).length)
+    clients.get(phone)?.forEach(session => eventEmitter.emit(`${phone}+${session.session_id}+${session.socket_id}`, ClientEventName.NewConnection, {session_id, platform}))
     
-    return new NextResponse('ok')
+    return response
 }

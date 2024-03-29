@@ -1,13 +1,14 @@
 'use client'
 
-import { View, useChats, useSelectedView, useSession } from '@/hooks/globalStates'
+import { useSelectedView } from '@/hooks/globalStates'
+import { useDB } from '@/hooks/useDB'
+import { View } from '@/lib/constants'
 
 export function AddFriendButton() {
-    const {} = useChats()
-    const {setSelectedView} = useSelectedView()
-    const {session} = useSession()
+    const { setSelectedView, selectedView } = useSelectedView()
+    const { session } = useDB()
 
-    if (!session?.token) return null
+    if (!session?.token || selectedView === View.DuplicateConnection) return null
     
     return (
         <button

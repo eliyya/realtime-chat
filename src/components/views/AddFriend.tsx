@@ -1,12 +1,11 @@
 'use client'
 
-import { useChats } from '@/hooks/globalStates'
-import { EVENT_NAMES } from '@/lib/constants'
+import { useDB } from '@/hooks/useDB'
 import { FormEventHandler } from 'react'
 
 
 export function AddFriend() {
-    const {chats} = useChats()
+    const { chats } = useDB()
     
     const createChat: FormEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault()
@@ -19,11 +18,11 @@ export function AddFriend() {
             // send message
         } else {
             // create chat
-            fetch('/api', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name: EVENT_NAMES.sendMessage, value: {to,message}})
-            })
+            // fetch('/api', {
+            //     method: 'POST',
+            //     headers: {'Content-Type': 'application/json'},
+            //     body: JSON.stringify({name: EVENT_NAMES.sendMessage, value: {to,message}})
+            // })
         }
     }
 
